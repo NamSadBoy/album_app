@@ -33,10 +33,11 @@ dependencies:
   sqflite: ^2.3.0
   sqflite_common_ffi_web: ^0.4.0
   path: ^1.8.3
-  provider: ^6.1.1
+  provider: ^6.1.5+1
   shared_preferences: ^2.2.2 
-  image_picker: ^1.0.7
+  image_picker: ^1.2.1
   cupertino_icons: ^1.0.2
+  supabase_flutter: ^2.12.2
 
 dev_dependencies:
   flutter_test:

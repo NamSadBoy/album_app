@@ -1,60 +1,56 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_providers.dart';
-import '../models/data_models.dart';
-import 'add_edit_screen.dart';
+import 'add_photo_screen.dart';
 import 'detail_screen.dart';
 
-enum SortOption { newest, oldest, az, za }
-
 class AlbumViewScreen extends StatefulWidget {
-  final Album album;
-  AlbumViewScreen({required this.album});
+  final String albumId;
+  final String albumName;
+
+  const AlbumViewScreen({
+    Key? key,
+    required this.albumId,
+    required this.albumName,
+  }) : super(key: key);
 
   @override
-  _AlbumViewScreenState createState() => _AlbumViewScreenState();
+  State<AlbumViewScreen> createState() => _AlbumViewScreenState();
 }
 
 class _AlbumViewScreenState extends State<AlbumViewScreen> {
-  String _searchQuery = '';
-  SortOption _sortOption = SortOption.newest;
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+      () => context.read<GalleryProvider>().fetchPhotos(widget.albumId),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
+    final provider = context.watch<GalleryProvider>();
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.album.name),
+        title: Text(widget.albumName),
         actions: [
-          PopupMenuButton<SortOption>(
+          // NÚT SẮP XẾP ẢNH
+          PopupMenuButton<String>(
             icon: const Icon(Icons.sort),
-            onSelected: (SortOption result) {
-              setState(() {
-                _sortOption = result;
-              });
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<SortOption>>[
-              const PopupMenuItem<SortOption>(
-                value: SortOption.newest,
-                child: Text('Mới nhất'),
-              ),
-              const PopupMenuItem<SortOption>(
-                value: SortOption.oldest,
-                child: Text('Cũ nhất'),
-              ),
-              const PopupMenuItem<SortOption>(
-                value: SortOption.az,
-                child: Text('Tên A-Z'),
-              ),
-              const PopupMenuItem<SortOption>(
-                value: SortOption.za,
-                child: Text('Tên Z-A'),
-              ),
+            onSelected: (value) => provider.setPhotoSort(value),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'newest', child: Text('Mới nhất')),
+              const PopupMenuItem(value: 'oldest', child: Text('Cũ nhất')),
+              const PopupMenuItem(value: 'az', child: Text('Tên: A-Z')),
+              const PopupMenuItem(value: 'za', child: Text('Tên: Z-A')),
             ],
           ),
         ],
       ),
       body: Column(
         children: [
+          // THANH TÌM KIẾM ẢNH
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: TextField(
@@ -62,93 +58,48 @@ class _AlbumViewScreenState extends State<AlbumViewScreen> {
                 hintText: 'Tìm kiếm ảnh theo tên...',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                filled: true,
-                fillColor: Colors.grey.withOpacity(0.1),
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value.toLowerCase();
-                });
-              },
+              onChanged: (value) => provider.setPhotoFilter(value),
             ),
           ),
+          // LƯỚI ẢNH
           Expanded(
-            child: Consumer<GalleryProvider>(
-              builder: (context, provider, child) {
-                var albumPhotos = provider
-                    .getPhotosByAlbum(widget.album.id!)
-                    .where((p) => p.title.toLowerCase().contains(_searchQuery))
-                    .toList();
-
-                albumPhotos.sort((a, b) {
-                  switch (_sortOption) {
-                    case SortOption.az:
-                      return a.title.toLowerCase().compareTo(
-                        b.title.toLowerCase(),
+            child: provider.isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : GridView.builder(
+                    padding: const EdgeInsets.all(8),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
+                        ),
+                    itemCount:
+                        provider.filteredPhotos.length, // Dùng danh sách đã lọc
+                    itemBuilder: (context, index) {
+                      final photo = provider.filteredPhotos[index];
+                      return GestureDetector(
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => DetailScreen(photo: photo),
+                          ),
+                        ),
+                        child: GridTile(
+                          footer: GridTileBar(
+                            backgroundColor: Colors.black54,
+                            title: Text(photo.title),
+                          ),
+                          child: Image.network(
+                            photo.imageUrl,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
                       );
-                    case SortOption.za:
-                      return b.title.toLowerCase().compareTo(
-                        a.title.toLowerCase(),
-                      );
-                    case SortOption.oldest:
-                      return a.id!.compareTo(b.id!);
-                    case SortOption.newest:
-                    default:
-                      return b.id!.compareTo(a.id!);
-                  }
-                });
-
-                if (albumPhotos.isEmpty)
-                  return const Center(child: Text('Không có ảnh nào!'));
-
-                return GridView.builder(
-                  padding: const EdgeInsets.all(8),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    crossAxisSpacing: 8,
-                    mainAxisSpacing: 8,
+                    },
                   ),
-                  itemCount: albumPhotos.length,
-                  itemBuilder: (context, index) {
-                    final photo = albumPhotos[index];
-                    return GestureDetector(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => DetailScreen(photo: photo),
-                        ),
-                      ),
-                      child: Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: Image.memory(
-                                photo.imageBytes,
-                                fit: BoxFit.cover,
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                photo.title,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
           ),
         ],
       ),
@@ -156,7 +107,7 @@ class _AlbumViewScreenState extends State<AlbumViewScreen> {
         onPressed: () => Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => AddEditScreen(albumId: widget.album.id),
+            builder: (_) => AddPhotoScreen(albumId: widget.albumId),
           ),
         ),
         child: const Icon(Icons.add_a_photo),

@@ -1,23 +1,45 @@
-import 'dart:typed_data';
-
 class Album {
-  int? id;
+  String? id;
   String name;
+  String dateCreated;
+  bool isFavorite; // MỚI
+  bool isHidden; // MỚI
 
-  Album({this.id, required this.name});
+  Album({
+    this.id,
+    required this.name,
+    required this.dateCreated,
+    this.isFavorite = false,
+    this.isHidden = false,
+  });
 
-  Map<String, dynamic> toMap() => {'id': id, 'name': name};
-  factory Album.fromMap(Map<String, dynamic> map) =>
-      Album(id: map['id'], name: map['name']);
+  factory Album.fromMap(Map<String, dynamic> map) {
+    return Album(
+      id: map['id'].toString(),
+      name: map['name'],
+      dateCreated: map['date_created'] ?? '',
+      isFavorite: map['is_favorite'] ?? false,
+      isHidden: map['is_hidden'] ?? false,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'name': name,
+      'date_created': dateCreated,
+      'is_favorite': isFavorite,
+      'is_hidden': isHidden,
+    };
+  }
 }
 
 class Photo {
-  int? id;
-  int albumId;
+  String? id;
+  String albumId;
   String title;
   String description;
   String dateAdded;
-  Uint8List imageBytes;
+  String imageUrl;
 
   Photo({
     this.id,
@@ -25,28 +47,27 @@ class Photo {
     required this.title,
     required this.description,
     required this.dateAdded,
-    required this.imageBytes,
+    required this.imageUrl,
   });
-
-  Map<String, dynamic> toMap() {
-    return {
-      'id': id,
-      'albumId': albumId,
-      'title': title,
-      'description': description,
-      'dateAdded': dateAdded,
-      'imageBytes': imageBytes,
-    };
-  }
 
   factory Photo.fromMap(Map<String, dynamic> map) {
     return Photo(
-      id: map['id'],
-      albumId: map['albumId'],
+      id: map['id'].toString(),
+      albumId: map['album_id'].toString(),
       title: map['title'],
-      description: map['description'],
-      dateAdded: map['dateAdded'] ?? 'Chưa xác định',
-      imageBytes: map['imageBytes'],
+      description: map['description'] ?? '',
+      dateAdded: map['date_added'] ?? '',
+      imageUrl: map['image_url'],
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'album_id': albumId,
+      'title': title,
+      'description': description,
+      'date_added': dateAdded,
+      'image_url': imageUrl,
+    };
   }
 }
