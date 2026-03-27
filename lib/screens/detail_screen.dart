@@ -3,17 +3,93 @@ import 'package:provider/provider.dart';
 import '../models/data_models.dart';
 import '../providers/app_providers.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final Photo photo;
   const DetailScreen({Key? key, required this.photo}) : super(key: key);
+
+  @override
+  State<DetailScreen> createState() => _DetailScreenState();
+}
+
+class _DetailScreenState extends State<DetailScreen> {
+  late Photo currentPhoto;
+
+  @override
+  void initState() {
+    super.initState();
+    currentPhoto = widget.photo;
+  }
+
+  void _showEditPhotoDialog() {
+    final titleController = TextEditingController(text: currentPhoto.title);
+    final descController = TextEditingController(
+      text: currentPhoto.description,
+    );
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Sửa thông tin ảnh'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: titleController,
+              decoration: const InputDecoration(
+                labelText: 'Tên ảnh',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 12),
+            TextField(
+              controller: descController,
+              decoration: const InputDecoration(
+                labelText: 'Mô tả',
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 3,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (titleController.text.isNotEmpty) {
+                context.read<GalleryProvider>().editPhoto(
+                  currentPhoto.id!,
+                  currentPhoto.albumId,
+                  titleController.text,
+                  descController.text,
+                );
+
+                setState(() {
+                  currentPhoto.title = titleController.text;
+                  currentPhoto.description = descController.text;
+                });
+                Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Lưu thay đổi'),
+          ),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(photo.title),
-        // NÚT XÓA KÈM CẢNH BÁO
+        title: Text(currentPhoto.title),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.blue),
+            onPressed: _showEditPhotoDialog,
+          ),
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),
             onPressed: () {
@@ -34,9 +110,11 @@ class DetailScreen extends StatelessWidget {
                         backgroundColor: Colors.red,
                       ),
                       onPressed: () {
-                        context.read<GalleryProvider>().deletePhoto(photo);
-                        Navigator.pop(ctx); // Đóng hộp thoại
-                        Navigator.pop(context); // Thoát ra ngoài lưới ảnh
+                        context.read<GalleryProvider>().deletePhoto(
+                          currentPhoto,
+                        );
+                        Navigator.pop(ctx);
+                        Navigator.pop(context);
                       },
                       child: const Text(
                         'Xóa',
@@ -57,7 +135,7 @@ class DetailScreen extends StatelessWidget {
               minScale: 1.0,
               maxScale: 4.0,
               child: Image.network(
-                photo.imageUrl,
+                currentPhoto.imageUrl,
                 fit: BoxFit.contain,
                 width: double.infinity,
               ),
@@ -66,10 +144,10 @@ class DetailScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(16),
             width: double.infinity,
-            color: Colors.white,
+            color: Theme.of(context).cardColor,
             child: Text(
-              'Mô tả: ${photo.description}',
-              style: const TextStyle(fontSize: 16, color: Colors.black87),
+              'Mô tả: ${currentPhoto.description}',
+              style: const TextStyle(fontSize: 16),
             ),
           ),
         ],

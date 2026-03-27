@@ -1,12 +1,13 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:shared_preferences/shared_preferences.dart'; // MỚI
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/data_models.dart';
 
 class ThemeProvider extends ChangeNotifier {
   bool _isDarkMode = false;
   bool get isDarkMode => _isDarkMode;
+
   void toggleTheme() {
     _isDarkMode = !_isDarkMode;
     notifyListeners();
@@ -26,11 +27,11 @@ class GalleryProvider extends ChangeNotifier {
   String photoSortOrder = 'newest';
 
   // --- TÍNH NĂNG ẨN ALBUM ---
-  bool isShowingHidden = false; // Trạng thái đang xem album ẩn hay không
-  String? _pinCode; // Mã PIN lưu trong máy
+  bool isShowingHidden = false;
+  String? _pinCode;
 
   GalleryProvider() {
-    _loadPin(); // Load mã PIN ngay khi bật app
+    _loadPin();
   }
 
   Future<void> _loadPin() async {
@@ -61,12 +62,10 @@ class GalleryProvider extends ChangeNotifier {
       bool matchSearch = a.name.toLowerCase().contains(
         albumSearchQuery.toLowerCase(),
       );
-      // Nếu không bật chế độ xem ẩn, thì giấu các album bị đánh dấu isHidden đi
       bool matchHidden = isShowingHidden ? true : !a.isHidden;
       return matchSearch && matchHidden;
     }).toList();
 
-    // Sắp xếp: Ưu tiên Yêu thích lên đầu, sau đó mới xét theo ngày/tên
     temp.sort((a, b) {
       if (a.isFavorite && !b.isFavorite) return -1;
       if (!a.isFavorite && b.isFavorite) return 1;
@@ -83,7 +82,7 @@ class GalleryProvider extends ChangeNotifier {
     return temp;
   }
 
-  // (Phần lọc ảnh giữ nguyên)
+  // --- LOGIC LỌC & SẮP XẾP ẢNH ---
   List<Photo> get filteredPhotos {
     List<Photo> temp = _photos
         .where(
@@ -101,7 +100,6 @@ class GalleryProvider extends ChangeNotifier {
     return temp;
   }
 
-  // Setters
   void setAlbumFilter(String query) {
     albumSearchQuery = query;
     notifyListeners();
@@ -122,32 +120,7 @@ class GalleryProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  // --- CẬP NHẬT TRẠNG THÁI YÊU THÍCH / ẨN LÊN SUPABASE ---
-  Future<void> toggleFavorite(Album album) async {
-    try {
-      await _supabase
-          .from('albums')
-          .update({'is_favorite': !album.isFavorite})
-          .eq('id', album.id!);
-      await fetchAlbums();
-    } catch (e) {
-      print('Lỗi Yêu thích: $e');
-    }
-  }
-
-  Future<void> toggleHidden(Album album) async {
-    try {
-      await _supabase
-          .from('albums')
-          .update({'is_hidden': !album.isHidden})
-          .eq('id', album.id!);
-      await fetchAlbums();
-    } catch (e) {
-      print('Lỗi Ẩn: $e');
-    }
-  }
-
-  // --- CÁC HÀM CŨ (Fetch, Add, Delete) ---
+  // --- CÁC HÀM TƯƠNG TÁC VỚI SUPABASE CHO ALBUM ---
   Future<void> fetchAlbums() async {
     isLoading = true;
     notifyListeners();
@@ -183,6 +156,44 @@ class GalleryProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> toggleFavorite(Album album) async {
+    try {
+      await _supabase
+          .from('albums')
+          .update({'is_favorite': !album.isFavorite})
+          .eq('id', album.id!);
+      await fetchAlbums();
+    } catch (e) {
+      print('Lỗi Yêu thích: $e');
+    }
+  }
+
+  Future<void> toggleHidden(Album album) async {
+    try {
+      await _supabase
+          .from('albums')
+          .update({'is_hidden': !album.isHidden})
+          .eq('id', album.id!);
+      await fetchAlbums();
+    } catch (e) {
+      print('Lỗi Ẩn: $e');
+    }
+  }
+
+  // MỚI: SỬA TÊN ALBUM
+  Future<void> editAlbum(String albumId, String newName) async {
+    try {
+      await _supabase
+          .from('albums')
+          .update({'name': newName})
+          .eq('id', albumId);
+      await fetchAlbums();
+    } catch (e) {
+      print('Lỗi sửa Album: $e');
+    }
+  }
+
+  // --- CÁC HÀM TƯƠNG TÁC VỚI SUPABASE CHO ẢNH ---
   Future<void> fetchPhotos(String albumId) async {
     isLoading = true;
     notifyListeners();
@@ -232,6 +243,24 @@ class GalleryProvider extends ChangeNotifier {
       await fetchPhotos(photo.albumId);
     } catch (e) {
       print('Lỗi xóa ảnh: $e');
+    }
+  }
+
+  // MỚI: SỬA THÔNG TIN ẢNH
+  Future<void> editPhoto(
+    String photoId,
+    String albumId,
+    String newTitle,
+    String newDescription,
+  ) async {
+    try {
+      await _supabase
+          .from('photos')
+          .update({'title': newTitle, 'description': newDescription})
+          .eq('id', photoId);
+      await fetchPhotos(albumId);
+    } catch (e) {
+      print('Lỗi sửa Ảnh: $e');
     }
   }
 }

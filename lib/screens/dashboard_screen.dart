@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/app_providers.dart';
+import '../models/data_models.dart';
 import 'album_view_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -17,7 +18,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     Future.microtask(() => context.read<GalleryProvider>().fetchAlbums());
   }
 
-  // Hộp thoại tạo mã PIN lần đầu
   void _showSetPinDialog() {
     final pinController = TextEditingController();
     showDialog(
@@ -52,7 +52,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // Hộp thoại nhập mã PIN để mở khóa
   void _showEnterPinDialog() {
     final pinController = TextEditingController();
     showDialog(
@@ -74,7 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onPressed: () {
               final provider = context.read<GalleryProvider>();
               if (provider.checkPin(pinController.text)) {
-                provider.toggleShowHidden(); // Đúng PIN thì mở khóa
+                provider.toggleShowHidden();
                 Navigator.pop(ctx);
               } else {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -92,7 +91,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // (Giữ nguyên hộp thoại tạo Album)
   void _showAddAlbumDialog(BuildContext context) {
     final txtController = TextEditingController();
     showDialog(
@@ -122,6 +120,38 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  void _showEditAlbumDialog(BuildContext context, Album album) {
+    final txtController = TextEditingController(text: album.name);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đổi tên Album'),
+        content: TextField(
+          controller: txtController,
+          decoration: const InputDecoration(hintText: 'Nhập tên mới...'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Hủy'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (txtController.text.isNotEmpty) {
+                context.read<GalleryProvider>().editAlbum(
+                  album.id!,
+                  txtController.text,
+                );
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Lưu'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<GalleryProvider>();
@@ -129,9 +159,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Album App'),
+        title: const Text('Đại Nam Album'),
         actions: [
-          // NÚT BẬT/TẮT XEM ALBUM ẨN
           IconButton(
             icon: Icon(
               provider.isShowingHidden
@@ -141,12 +170,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
             onPressed: () {
               if (provider.isShowingHidden) {
-                provider.toggleShowHidden(); // Khóa lại thì không cần hỏi PIN
+                provider.toggleShowHidden();
               } else {
                 if (provider.hasPin)
-                  _showEnterPinDialog(); // Đã có PIN thì hỏi nhập
+                  _showEnterPinDialog();
                 else
-                  _showSetPinDialog(); // Chưa có PIN thì bắt tạo
+                  _showSetPinDialog();
               }
             },
           ),
@@ -192,9 +221,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       final album = provider.filteredAlbums[index];
                       return ListTile(
                         leading: Icon(
-                          album.isHidden
-                              ? Icons.lock
-                              : Icons.folder, // Đổi icon nếu bị ẩn
+                          album.isHidden ? Icons.lock : Icons.folder,
                           size: 40,
                           color: album.isHidden ? Colors.grey : Colors.blue,
                         ),
@@ -215,14 +242,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                 ),
                               )
                             : null,
-
-                        // NÚT 3 CHẤM MENU CHO MỖI ALBUM
                         trailing: PopupMenuButton<String>(
                           onSelected: (value) {
                             if (value == 'fav') provider.toggleFavorite(album);
                             if (value == 'hide') provider.toggleHidden(album);
+                            if (value == 'edit')
+                              _showEditAlbumDialog(context, album);
                             if (value == 'delete') {
-                              // Hộp thoại xác nhận xóa
                               showDialog(
                                 context: context,
                                 builder: (ctx) => AlertDialog(
@@ -285,6 +311,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                   ),
                                   const SizedBox(width: 8),
                                   Text(album.isHidden ? 'Bỏ Ẩn' : 'Ẩn Album'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem(
+                              value: 'edit',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.edit, color: Colors.blue),
+                                  SizedBox(width: 8),
+                                  Text('Đổi tên'),
                                 ],
                               ),
                             ),
